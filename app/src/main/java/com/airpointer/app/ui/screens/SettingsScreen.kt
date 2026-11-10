@@ -1,7 +1,9 @@
 package com.airpointer.app.ui.screens
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,17 +21,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.AccessibilityNew
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Help
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Laptop
-import androidx.compose.material.icons.filled.NearMe
-import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.MotionPhotosOn
+import androidx.compose.material.icons.filled.Mouse
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -47,10 +50,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.airpointer.app.ui.theme.AmberWarning
 import com.airpointer.app.ui.theme.BgDark
 import com.airpointer.app.ui.theme.BluePrimary
 import com.airpointer.app.ui.theme.CyanAccent
@@ -70,8 +74,11 @@ fun SettingsScreen(
     viewModel: SettingsViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val settings by viewModel.settings.collectAsState()
     val isHidSupported by viewModel.hidManager.isHidSupported.collectAsState()
+    val isAccessibilityActive by viewModel.isAccessibilityActive.collectAsState()
+
     var showWindowsGuide by remember { mutableStateOf(false) }
     var showLinuxGuide by remember { mutableStateOf(false) }
 
@@ -80,7 +87,7 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(BgDark)
     ) {
-        // Simple Top Header
+        // Top Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -97,7 +104,7 @@ fun SettingsScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Fine-tune cursor, gestures, and connection",
+                    text = "Fine-tune Touchpad, Air Mouse, and Gestures",
                     fontSize = 11.sp,
                     color = TextSecondary
                 )
@@ -111,10 +118,212 @@ fun SettingsScreen(
             contentPadding = PaddingValues(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Section: Cursor & Sensitivity
+            // Section: Desk Mouse (Slide on Table / Surface)
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Mouse, contentDescription = null, tint = CyanAccent, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Desk Mouse (Slide on Table / Desk)",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = CyanAccent,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                    shape = RoundedCornerShape(14.dp),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(SurfaceBorder))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Desk Slide Sensitivity", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                Text("Linear impulse response when sliding phone on flat surface", color = TextSecondary, fontSize = 11.sp)
+                            }
+                            Text(
+                                String.format(Locale.US, "%.1fx", settings.deskSensitivity),
+                                color = CyanAccent,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                        Slider(
+                            value = settings.deskSensitivity,
+                            onValueChange = { viewModel.setDeskSensitivity(it) },
+                            valueRange = 0.5f..3.0f,
+                            steps = 25,
+                            colors = SliderDefaults.colors(
+                                thumbColor = CyanAccent,
+                                activeTrackColor = CyanAccent,
+                                inactiveTrackColor = SurfaceElevated
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Section: Air Mouse & Gyroscope Motion Control
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.MotionPhotosOn, contentDescription = null, tint = CyanAccent, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Air Mouse (Physical Motion)",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = CyanAccent,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                    shape = RoundedCornerShape(14.dp),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(SurfaceBorder))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Motion Sensitivity", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                            Text(
+                                String.format(Locale.US, "%.1fx", settings.gyroSensitivity),
+                                color = CyanAccent,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                        Slider(
+                            value = settings.gyroSensitivity,
+                            onValueChange = { viewModel.setGyroSensitivity(it) },
+                            valueRange = 0.5f..3.0f,
+                            steps = 25,
+                            colors = SliderDefaults.colors(
+                                thumbColor = CyanAccent,
+                                activeTrackColor = CyanAccent,
+                                inactiveTrackColor = SurfaceElevated
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        SettingToggleRow(
+                            title = "Continuous Motion Tracking",
+                            subtitle = "Keep tracking mouse movement without needing to hold down the Aim button",
+                            isChecked = settings.gyroContinuous,
+                            onCheckedChange = { viewModel.setGyroContinuous(it) }
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        SettingToggleRow(
+                            title = "Invert Horizontal (X)",
+                            subtitle = "Reverse left/right cursor motion",
+                            isChecked = settings.gyroInvertX,
+                            onCheckedChange = { viewModel.setGyroInvertX(it) }
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        SettingToggleRow(
+                            title = "Invert Vertical (Y)",
+                            subtitle = "Reverse up/down cursor motion",
+                            isChecked = settings.gyroInvertY,
+                            onCheckedChange = { viewModel.setGyroInvertY(it) }
+                        )
+                    }
+                }
+            }
+
+            // Section: Accessibility Service & Hardware Buttons
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.AccessibilityNew, contentDescription = null, tint = CyanAccent, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Accessibility & Hardware Gestures",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = CyanAccent,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                    shape = RoundedCornerShape(14.dp),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(SurfaceBorder))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        SettingToggleRow(
+                            title = "Volume Buttons as Mouse Clicks",
+                            subtitle = "Press Vol Down for Left Click, Vol Up for Right Click",
+                            isChecked = settings.volumeButtonsAsMouse,
+                            onCheckedChange = { viewModel.setVolumeButtonsAsMouse(it) }
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Accessibility Service Status & Activation Card
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Accessibility Service Status",
+                                    color = TextPrimary,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 13.sp
+                                )
+                                Text(
+                                    text = if (isAccessibilityActive) "Active • System-wide gestures enabled" else "Optional • Enable to capture volume buttons system-wide",
+                                    color = if (isAccessibilityActive) EmeraldSuccess else AmberWarning,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            if (!isAccessibilityActive) {
+                                Button(
+                                    onClick = {
+                                        try {
+                                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            // Handle exception
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Enable", fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Section: Touchpad Cursor & Sensitivity
             item {
                 Text(
-                    text = "Cursor & Movement",
+                    text = "Touchpad Settings",
                     style = MaterialTheme.typography.titleMedium,
                     color = CyanAccent,
                     fontWeight = FontWeight.SemiBold
@@ -133,7 +342,7 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Cursor Sensitivity", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                            Text("Touchpad Sensitivity", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                             Text(
                                 String.format(Locale.US, "%.1fx", settings.cursorSensitivity),
                                 color = CyanAccent,
@@ -161,28 +370,9 @@ fun SettingsScreen(
                             isChecked = settings.pointerAcceleration,
                             onCheckedChange = { viewModel.setPointerAcceleration(it) }
                         )
-                    }
-                }
-            }
 
-            // Section: Scrolling & Touch Gestures
-            item {
-                Text(
-                    text = "Scrolling & Gestures",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = CyanAccent,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+                        Spacer(modifier = Modifier.height(10.dp))
 
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-                    shape = RoundedCornerShape(14.dp),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(SurfaceBorder))
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -266,7 +456,7 @@ fun SettingsScreen(
 
                         SettingToggleRow(
                             title = "Keep Screen On",
-                            subtitle = "Prevent device from sleeping while using touchpad",
+                            subtitle = "Prevent device from sleeping while using touchpad or air mouse",
                             isChecked = settings.keepScreenOn,
                             onCheckedChange = { viewModel.setKeepScreenOn(it) }
                         )
@@ -340,9 +530,19 @@ fun SettingsScreen(
                             if (isHidSupported) "Supported (API 28+)" else "Unsupported by ROM",
                             valueColor = if (isHidSupported) EmeraldSuccess else RedDanger
                         )
+                        DiagnosticRow(
+                            "Hardware Gyroscope",
+                            if (viewModel.airMouseManager.isGyroAvailable) "Detected & Active" else "Not Available",
+                            valueColor = if (viewModel.airMouseManager.isGyroAvailable) EmeraldSuccess else AmberWarning
+                        )
+                        DiagnosticRow(
+                            "Hardware Accelerometer",
+                            if (viewModel.airMouseManager.isAccelAvailable) "Detected & Active" else "Not Available",
+                            valueColor = if (viewModel.airMouseManager.isAccelAvailable) EmeraldSuccess else AmberWarning
+                        )
                         DiagnosticRow("App Name", "AirPointer")
                         DiagnosticRow("Tagline", "Your Phone. Your Mouse. No Wires.")
-                        DiagnosticRow("Version", "1.0.0 (Release)")
+                        DiagnosticRow("Version", "1.2.0 (Touchpad + Desk + Air Mouse)")
                     }
                 }
             }

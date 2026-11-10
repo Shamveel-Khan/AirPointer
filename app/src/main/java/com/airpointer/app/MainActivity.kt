@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -32,7 +33,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.airpointer.app.bluetooth.AirPointerService
+import com.airpointer.app.bluetooth.HidReportDescriptor
+import com.airpointer.app.data.InputMode
 import com.airpointer.app.ui.navigation.AppTab
 import com.airpointer.app.ui.screens.ConnectionScreen
 import com.airpointer.app.ui.screens.KeyboardScreen
@@ -48,6 +52,7 @@ import com.airpointer.app.ui.viewmodels.ConnectionViewModel
 import com.airpointer.app.ui.viewmodels.KeyboardViewModel
 import com.airpointer.app.ui.viewmodels.SettingsViewModel
 import com.airpointer.app.ui.viewmodels.TouchpadViewModel
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -112,13 +117,13 @@ class MainActivity : ComponentActivity() {
 
                 val connectionViewModel = remember { ConnectionViewModel(app.hidManager) }
                 val touchpadViewModel = remember {
-                    TouchpadViewModel(app.hidManager, app.settingsRepository, app.hapticHelper)
+                    TouchpadViewModel(app.hidManager, app.settingsRepository, app.hapticHelper, app.airMouseManager)
                 }
                 val keyboardViewModel = remember {
                     KeyboardViewModel(app.hidManager, app.settingsRepository, app.hapticHelper)
                 }
                 val settingsViewModel = remember {
-                    SettingsViewModel(app.settingsRepository, app.hidManager)
+                    SettingsViewModel(app.settingsRepository, app.hidManager, app.airMouseManager)
                 }
 
                 val userSettings by app.settingsRepository.settings.collectAsState()
@@ -171,6 +176,92 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val mode = app.settingsRepository.settings.value.inputMode
+        if (mode == InputMode.AIR_MOUSE || mode == InputMode.DESK_MOUSE) {
+            app.airMouseManager.start()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        app.airMouseManager.stop()
+    }
+
+    // Intercept hardware volume keys when in app
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        val settings = app.settingsRepository.settings.value
+        val target = app.hidManager.connectedDevice.value
+
+        if (settings.volumeButtonsAsMouse && target != null) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                    val leftBtn = if (settings.swapLeftRight) {
+                        HidReportDescriptor.MOUSE_BUTTON_RIGHT
+                    } else {
+                        HidReportDescriptor.MOUSE_BUTTON_LEFT
+                    }
+                    if (event?.repeatCount == 0) {
+                        app.hapticHelper.click(settings.hapticFeedback)
+                        lifecycleScope.launch {
+                            app.hidManager.mouseSender.setButton(target, leftBtn, true)
+                        }
+                    }
+                    return true
+                }
+                KeyEvent.KEYCODE_VOLUME_UP -> {
+                    val rightBtn = if (settings.swapLeftRight) {
+                        HidReportDescriptor.MOUSE_BUTTON_LEFT
+                    } else {
+                        HidReportDescriptor.MOUSE_BUTTON_RIGHT
+                    }
+                    if (event?.repeatCount == 0) {
+                        app.hapticHelper.click(settings.hapticFeedback)
+                        lifecycleScope.launch {
+                            app.hidManager.mouseSender.setButton(target, rightBtn, true)
+                        }
+                    }
+                    return true
+                }
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        val settings = app.settingsRepository.settings.value
+        val target = app.hidManager.connectedDevice.value
+
+        if (settings.volumeButtonsAsMouse && target != null) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                    val leftBtn = if (settings.swapLeftRight) {
+                        HidReportDescriptor.MOUSE_BUTTON_RIGHT
+                    } else {
+                        HidReportDescriptor.MOUSE_BUTTON_LEFT
+                    }
+                    lifecycleScope.launch {
+                        app.hidManager.mouseSender.setButton(target, leftBtn, false)
+                    }
+                    return true
+                }
+                KeyEvent.KEYCODE_VOLUME_UP -> {
+                    val rightBtn = if (settings.swapLeftRight) {
+                        HidReportDescriptor.MOUSE_BUTTON_LEFT
+                    } else {
+                        HidReportDescriptor.MOUSE_BUTTON_RIGHT
+                    }
+                    lifecycleScope.launch {
+                        app.hidManager.mouseSender.setButton(target, rightBtn, false)
+                    }
+                    return true
+                }
+            }
+        }
+        return super.onKeyUp(keyCode, event)
     }
 }
 

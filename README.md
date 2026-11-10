@@ -2,24 +2,44 @@
 
 > **Your Phone. Your Mouse. No Wires.**
 
-A native Android application built with Kotlin and Jetpack Compose that turns your smartphone into a wireless Bluetooth HID mouse, touchpad, and keyboard for Windows and Linux laptops — with **zero desktop software, zero Python servers, zero Wi-Fi, and no internet required**.
+A native Android application built with Kotlin and Jetpack Compose that transforms your smartphone into a wireless Bluetooth HID mouse, air motion pointer, touchpad, and keyboard for Windows and Linux laptops — with **zero desktop software, zero Python servers, zero Wi-Fi, and no internet required**.
 
 ---
 
 ## 🚀 Key Highlights
 
+- **Triple Input Modes:**
+  1. **Touchpad Mode:** Full-screen laptop-style trackpad with multi-touch gestures, pointer acceleration, and bottom click buttons.
+  2. **Desk Mouse Mode (Physical Desk Slide):** Slide your phone flat across any table, desk, or mousepad just like a real optical mouse! Features dynamic DC tilt cancellation, surface friction modeling to eliminate braking recoil, and Gyroscope Z wrist arc assistance.
+  3. **Air Mouse Mode (Physical Motion in Air):** Point and wave your phone in the air to guide the PC mouse cursor! Uses hardware gyroscope angular velocity with anti-tremor deadzone filtering and exponential smoothing.
+- **Physical Volume Button Clicks & Accessibility Gestures:**
+  - Press physical **Volume Down** for **Left Click**
+  - Press physical **Volume Up** for **Right Click**
+  - Works inside the app and system-wide via the optional `AirPointerAccessibilityService`.
 - **Pure Bluetooth HID Profile:** Emulates a standard physical USB/Bluetooth Human Interface Device (`BluetoothHidDevice` API 28+). Your computer sees the phone as a genuine hardware mouse and keyboard.
 - **No Companion App Required:** Works natively with Windows 10/11 and Linux (Ubuntu, Fedora, Arch, Debian) without installing any receiver daemon or background software on the PC.
-- **Ultra-Responsive Low-Latency Touchpad:** Direct MotionEvent processing with pointer ballistics acceleration curve for pixel-precise slow movement and swift screen traversal.
-- **Multi-Touch Gestures:**
-  - One-finger move → Move mouse cursor
-  - Single tap → Left click
-  - Double tap → Double click
-  - Two-finger tap → Right click
-  - Two-finger vertical swipe → Smooth scroll (with Natural Scrolling toggle)
-  - Two-finger horizontal swipe → Horizontal pan
+- **Multi-Touch Gestures (Touchpad):**
+  - 1 finger move → Move mouse cursor
+  - 1 finger tap → Left click
+  - 1 finger double tap → Double click
+  - 2 finger tap → Right click
+  - 2 finger vertical swipe → Smooth scroll (with Natural Scrolling toggle)
+  - 2 finger horizontal swipe → Horizontal pan
   - Long-press (0.35s) & drag → Drag & Drop (Left click held)
   - Drag Lock toggle for effortless window moving and text selection
+- **Desk Mouse Features:**
+  - **Zero-Lag Kinematics:** Instant reaction to physical phone sliding.
+  - **Braking Clamping (Zero Bounce):** Solves the classic accelerometer bounce issue where braking pushes the cursor backwards.
+  - **Wrist Arc Pivoting Assist:** Combines Gyro Z rotation for natural wrist pivoting while sliding on a mousepad.
+  - **Tap to Freeze / Lift:** Easily pause tracking with a single tap to reposition the phone on the desk.
+  - **Zero Bias Button:** Instantly adapts to surface angle and resting position.
+  - **On-Screen Desk Sensitivity Slider:** Tune your surface speed directly from the main screen.
+  - **Thumb Scroll Strip:** Slide thumb on the right edge to scroll while moving the phone on the desk.
+- **Air Mouse Motion Features:**
+  - **Hold to Aim Button (Clutch) / Continuous Mode:** Free-hand air pointing with customizable deadzone.
+  - **Interactive 3D Motion Sphere:** Real-time visual horizon reticle reflecting phone pitch and yaw angles.
+  - **One-Tap Recenter:** Calibrates gyroscope sensor bias instantly.
+  - **Side Scroll Strip:** Slide thumb along the right edge to scroll while aiming.
 - **Desktop Keyboard & IME Typing:**
   - Send text typed with Gboard, Samsung Keyboard, or Voice Typing directly to the PC
   - Hardware desktop keys: `Esc`, `Tab`, `Backspace`, `Delete`, `Enter`, `Home`, `End`, `PgUp`, `PgDn`
@@ -46,18 +66,22 @@ A native Android application built with Kotlin and Jetpack Compose that turns yo
 ```
 com.airpointer.app/
 ├── AirPointerApplication.kt       # Application class, singletons lifecycle
-├── MainActivity.kt                # UI host, runtime permission orchestration, tab navigation
+├── MainActivity.kt                # UI host, runtime permission orchestration, volume key interception
 ├── bluetooth/
 │   ├── BluetoothHidManager.kt     # HID registration, profile proxy, connection state, device discovery
 │   ├── HidReportDescriptor.kt     # Valid USB HID Combo descriptor (Mouse + Keyboard + Consumer)
 │   ├── MouseReportSender.kt       # Relative mouse reports, buttons, scrolling, dragging
 │   ├── KeyboardReportSender.kt    # Standard 8-byte keyboard reports, ASCII-to-HID mapper, media keys
 │   └── AirPointerService.kt       # Foreground service (FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+├── motion/
+│   └── AirMouseManager.kt         # Hardware gyroscope motion engine, low-pass filter, clutch logic
+├── accessibility/
+│   └── AirPointerAccessibilityService.kt # System-wide volume button click capture & gesture receiver
 ├── gesture/
 │   ├── TouchpadGestureHandler.kt  # Multi-touch gesture recognition, ballistics acceleration curve
 │   └── TouchpadListener.kt        # Callback interface for gesture events
 ├── data/
-│   ├── UserSettings.kt            # Data model for user preferences
+│   ├── UserSettings.kt            # Data model for user preferences (Touchpad & Air Mouse)
 │   └── SettingsRepository.kt      # SharedPreferences persistence with reactive StateFlow
 ├── ui/
 │   ├── theme/                     # Dark color palette, typography, status bar theming
@@ -66,25 +90,6 @@ com.airpointer.app/
 │   ├── screens/                   # ConnectionScreen, TouchpadScreen, KeyboardScreen, SettingsScreen
 │   └── viewmodels/                # ConnectionViewModel, TouchpadViewModel, KeyboardViewModel, SettingsViewModel
 ```
-
----
-
-## 📦 HID Report Descriptors
-
-AirPointer registers a standard USB HID Combo device with three Report IDs:
-
-1. **Report ID 1 — Mouse:**
-   - 5 buttons (Left, Right, Middle, Back, Forward)
-   - Relative X and Y (-127 to +127, 8-bit signed)
-   - Relative Wheel / Vertical Scroll (-127 to +127)
-   - Relative AC Pan / Horizontal Scroll (-127 to +127)
-2. **Report ID 2 — Keyboard:**
-   - 8-bit modifiers byte (`LCtrl`, `LShift`, `LAlt`, `LGUI`, `RCtrl`, `RShift`, `RAlt`, `RGUI`)
-   - 1 reserved byte
-   - 6-key array for simultaneous key presses (rollover)
-   - Output LED report for Caps Lock & Num Lock
-3. **Report ID 3 — Consumer Controls:**
-   - 16-bit usage for Volume Up/Down, Mute, Play/Pause, Next/Previous Track
 
 ---
 
@@ -104,7 +109,7 @@ Or copy `AirPointer.apk` to your Android device via USB file transfer or Google 
 
 ---
 
-## 💻 Pairing Instructions
+## 💻 Pairing & Usage Instructions
 
 ### Pairing with Windows 10 & 11
 
@@ -113,44 +118,20 @@ Or copy `AirPointer.apk` to your Android device via USB file transfer or Google 
 3. In the **Connect** tab, tap **Make Discoverable**.
 4. On your Windows laptop:
    - Go to **Settings** → **Bluetooth & devices**.
-   - Make sure Bluetooth is **On**, then click **Add device** → **Bluetooth**.
+   - Turn Bluetooth **On**, then click **Add device** → **Bluetooth**.
    - Select **AirPointer** from the list of available devices.
-   - Confirm the pairing code on both the phone and laptop.
+   - Confirm the pairing code on both devices.
 5. Windows will automatically configure AirPointer as a **Bluetooth HID Mouse & Keyboard**. No drivers or restarts needed!
-6. Switch to the **Touchpad** tab in AirPointer and move your finger — your laptop cursor will move instantly!
 
-### Pairing with Linux (Ubuntu, Fedora, Arch, Debian)
+### Using Touchpad vs Air Mouse
 
-1. Open **AirPointer** on your phone and tap **Make Discoverable** in the **Connect** tab.
-2. Open Bluetooth Settings in GNOME / KDE or use `bluetoothctl`:
-   ```bash
-   bluetoothctl
-   [bluetooth]# scan on
-   # Locate AirPointer's MAC address (e.g. 12:34:56:78:9A:BC)
-   [bluetooth]# pair 12:34:56:78:9A:BC
-   [bluetooth]# trust 12:34:56:78:9A:BC
-   [bluetooth]# connect 12:34:56:78:9A:BC
-   ```
-3. The Linux Kernel HID subsystem (`hid-generic` / `input`) immediately recognizes both the mouse pointer and keyboard.
-
----
-
-## ⚙️ Crash Fix Details (TargetSDK 34+ / 37 Compatibility)
-
-### The Issue
-On Android 14+ (targetSdk ≥ 34), invoking `startForeground()` with `ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE` before runtime permissions (`BLUETOOTH_CONNECT`, `BLUETOOTH_SCAN`, `BLUETOOTH_ADVERTISE`) are granted throws a fatal `SecurityException`:
-```
-java.lang.SecurityException: Starting FGS with type connectedDevice requires permissions:
-allOf=true [android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE]
-anyOf=false [android.permission.BLUETOOTH_ADVERTISE, android.permission.BLUETOOTH_CONNECT, ...]
-```
-Additionally, querying `bluetoothAdapter.isEnabled` or `adapter.bondedDevices` on cold start without granted permissions throws a `SecurityException` on Android 12+.
-
-### The Solution
-1. **Deferred Service Launch:** `AirPointerService` is never started on cold start before permissions are granted. It only starts after the user grants permissions via the permission modal or if already granted.
-2. **Defensive Service Guards:** `AirPointerService.startForegroundWithNotification()` validates permissions before calling `startForeground()`, and wraps the call in `try / catch (e: SecurityException)`.
-3. **Defensive Bluetooth Checks:** In `BluetoothHidManager`, all calls to `isEnabled`, `bondedDevices`, `getProfileProxy()`, and discovery are guarded by `hasBluetoothPermissions()` and wrapped in safety try-catches.
-4. **Broadcast Receiver Flags:** Broadcast receivers use `Context.RECEIVER_EXPORTED` on Android 13+ (API 33+) to comply with modern Android broadcast security policies.
+- Switch between **Touchpad** and **Air Mouse (Motion)** using the top pill bar in the Touchpad tab.
+- In **Air Mouse Mode**:
+  - Hold down the large **Hold to Aim & Move Mouse** button with your thumb and wave your phone in the air. Your computer's mouse cursor will mirror your hand movement!
+  - Release the button to reposition your hand without moving the cursor.
+  - Press the phone's physical **Volume Down** button for a real **Left Click**, and **Volume Up** for a **Right Click**!
+  - Slide your thumb along the right edge scroll bar to scroll up and down.
+  - Tap **Recenter** to calibrate the gyroscope at any time.
 
 ---
 

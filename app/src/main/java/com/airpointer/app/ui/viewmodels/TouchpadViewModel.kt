@@ -6,24 +6,25 @@ import androidx.lifecycle.viewModelScope
 import com.airpointer.app.bluetooth.BluetoothHidManager
 import com.airpointer.app.bluetooth.HidConnectionState
 import com.airpointer.app.bluetooth.HidReportDescriptor
+import com.airpointer.app.data.InputMode
 import com.airpointer.app.data.SettingsRepository
 import com.airpointer.app.data.UserSettings
 import com.airpointer.app.gesture.HapticType
 import com.airpointer.app.gesture.TouchpadGestureHandler
 import com.airpointer.app.gesture.TouchpadListener
+import com.airpointer.app.motion.AirMouseManager
 import com.airpointer.app.ui.components.HapticHelper
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 class TouchpadViewModel(
     private val hidManager: BluetoothHidManager,
     private val settingsRepository: SettingsRepository,
-    private val hapticHelper: HapticHelper
+    private val hapticHelper: HapticHelper,
+    val airMouseManager: AirMouseManager
 ) : ViewModel(), TouchpadListener {
 
     val settings: StateFlow<UserSettings> = settingsRepository.settings
@@ -36,12 +37,49 @@ class TouchpadViewModel(
 
     val gestureHandler = TouchpadGestureHandler(this, settings.value)
 
+    val isGyroAvailable: Boolean = airMouseManager.isGyroAvailable
+    val isAccelAvailable: Boolean = airMouseManager.isAccelAvailable
+    val isGyroTracking: StateFlow<Boolean> = airMouseManager.isTracking
+    val gyroPitch: StateFlow<Float> = airMouseManager.pitch
+    val gyroYaw: StateFlow<Float> = airMouseManager.yaw
+    val deskSpeed: StateFlow<Float> = airMouseManager.deskSpeed
+
     init {
         viewModelScope.launch {
             settings.collect { newSettings ->
                 gestureHandler.settings = newSettings
+                if (newSettings.inputMode == InputMode.AIR_MOUSE || newSettings.inputMode == InputMode.DESK_MOUSE) {
+                    airMouseManager.start()
+                } else {
+                    airMouseManager.stop()
+                }
             }
         }
+    }
+
+    fun setInputMode(mode: InputMode) {
+        settingsRepository.updateInputMode(mode)
+        if (mode == InputMode.AIR_MOUSE || mode == InputMode.DESK_MOUSE) {
+            airMouseManager.start()
+        } else {
+            airMouseManager.stop()
+        }
+    }
+
+    fun setGyroTrackingActive(active: Boolean) {
+        airMouseManager.setTrackingActive(active)
+    }
+
+    fun calibrateGyro() {
+        airMouseManager.calibrate()
+    }
+
+    fun setGyroSensitivity(value: Float) {
+        settingsRepository.updateGyroSensitivity(value)
+    }
+
+    fun setDeskSensitivity(value: Float) {
+        settingsRepository.updateDeskSensitivity(value)
     }
 
     override fun onMove(dx: Float, dy: Float, isDragging: Boolean) {
@@ -139,7 +177,7 @@ class TouchpadViewModel(
         }
     }
 
-    // Explicit button press methods (for on-screen click buttons)
+    // Explicit button press methods (for on-screen click buttons & volume keys)
     fun pressButton(button: Byte) {
         val target = connectedDevice.value ?: return
         val effectiveButton = mapButton(button)
@@ -160,5 +198,10 @@ class TouchpadViewModel(
             HidReportDescriptor.MOUSE_BUTTON_RIGHT -> HidReportDescriptor.MOUSE_BUTTON_LEFT
             else -> button
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        airMouseManager.stop()
     }
 }

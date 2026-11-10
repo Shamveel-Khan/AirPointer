@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">AirPointer</string>
+    <string name="accessibility_service_description">Enables AirPointer to use physical volume buttons as Left and Right mouse clicks and capture accessibility gestures.</string>
 </resources>

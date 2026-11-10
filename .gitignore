@@ -1,15 +1,84 @@
+# ==============================================================================
+# Android / Gradle / Kotlin / IntelliJ .gitignore
+# ==============================================================================
+
+# Built application packages and binaries
+*.apk
+*.ap_
+*.aab
+*.aar
+*.dex
+*.class
+
+# Gradle build cache and output directories
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Kotlin compiler daemon & cache
+.kotlin/
+*.kotlin_module
+
+# Android Studio / IntelliJ IDEA
+.idea/
+!.idea/runConfigurations/
+!.idea/copyright/
+!.idea/misc.xml
+!.idea/compiler.xml
+!.idea/gradle.xml
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+*.iws
+*.ipr
+out/
+
+# Android Studio temporary files & caches
+.idea/workspace.xml
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.idea/shelf/
+.idea/deploymentTargetSelector.xml
+.idea/deviceManager.xml
+.idea/render.experimental.xml
+.idea/httpRequests/
+
+# Local SDK and environment properties (machine-specific paths)
 local.properties
+**/local.properties
+gradle.properties.user
+
+# Android Studio Profiler & Captures
+captures/
+.navigation/
+
+# C/C++ Native builds (NDK)
+.externalNativeBuild/
+.cxx/
+
+# Keystores and Signing credentials
+*.jks
+*.keystore
+*.p12
+*.key
+*.mobileprovision
+
+# Log files and crash reports
+*.log
+
+# OS-generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Backup & swap files
+*~
+*.swp
+*.bak
