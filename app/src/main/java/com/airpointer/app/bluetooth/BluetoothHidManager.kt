@@ -335,26 +335,10 @@ class BluetoothHidManager(private val context: Context) {
             HidReportDescriptor.DESCRIPTOR
         )
 
-        val inQos = BluetoothHidDeviceAppQosSettings(
-            BluetoothHidDeviceAppQosSettings.SERVICE_BEST_EFFORT,
-            800,
-            9,
-            800,
-            11250,
-            BluetoothHidDeviceAppQosSettings.MAX
-        )
-
-        val outQos = BluetoothHidDeviceAppQosSettings(
-            BluetoothHidDeviceAppQosSettings.SERVICE_BEST_EFFORT,
-            800,
-            9,
-            800,
-            11250,
-            BluetoothHidDeviceAppQosSettings.MAX
-        )
-
         try {
-            val result = currentHid.registerApp(sdpSettings, inQos, outQos, executor, hidCallback)
+            // Passing null for inQos & outQos allows Android's Bluetooth stack to use
+            // the hardware controller's full native bandwidth without artificial rate caps.
+            val result = currentHid.registerApp(sdpSettings, null, null, executor, hidCallback)
             Log.i(TAG, "registerApp result: $result")
         } catch (e: SecurityException) {
             Log.e(TAG, "SecurityException registering HID app", e)

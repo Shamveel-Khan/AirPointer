@@ -93,10 +93,10 @@ class TouchpadViewModel(
         }
 
         val buttonMask = if (isDragging || _isDragLocked.value) leftBtn else HidReportDescriptor.MOUSE_BUTTON_NONE
-        hidManager.mouseSender.moveCursor(
+        hidManager.mouseSender.moveCursorFloat(
             device = target,
-            dx = dx.roundToInt(),
-            dy = dy.roundToInt(),
+            dx = dx,
+            dy = dy,
             buttons = buttonMask
         )
     }
