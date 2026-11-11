@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AirPointer Desk Mouse Test & Analytics</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <meta name="theme-color" content="#0A0E17">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-group">
+        <span class="logo-icon">🖱️</span>
+        <h1>AirPointer Desk Test</h1>
+      </div>
+      <div id="badge-state" class="state-badge state-stationary">STATIONARY</div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="tab-nav">
+      <button id="tab-btn-live" class="tab-btn active">
+        <span>🖱️ Live Tracker</span>
+      </button>
+      <button id="tab-btn-testing" class="tab-btn">
+        <span>🔬 Test Recorder</span>
+      </button>
+      <a href="analytics.html" class="tab-btn" style="text-decoration: none; border: 1px solid rgba(0, 229, 255, 0.4); color: var(--cyan-accent);">
+        <span>📊 Advanced Studio</span>
+      </a>
+    </nav>
+
+    <!-- Insecure Context Warning (shown if not on localhost/HTTPS) -->
+    <div id="security-warning" class="security-banner hidden">
+      ⚠️ <strong>Sensors Blocked:</strong> Mobile Chrome requires a secure context for motion sensors. Run <code>adb reverse tcp:8000 tcp:8000</code> and open <code>http://localhost:8000</code>, or access via HTTPS.
+    </div>
+
+    <!-- ============================================================
+         TAB 1: LIVE TRACKER VIEW
+         ============================================================ -->
+    <div id="view-live" class="view-section">
+      <!-- Simulated Desktop Viewport -->
+      <div class="canvas-wrapper">
+        <div class="canvas-overlay-hint">Simulated Desktop (Tap canvas to center cursor)</div>
+        <canvas id="desktop-canvas"></canvas>
+      </div>
+
+      <!-- Calibration Progress Bar -->
+      <div class="calibration-container" style="margin-top: 10px;">
+        <div class="calibration-track">
+          <div id="calib-progress-bar" class="calibration-fill"></div>
+        </div>
+        <div class="calib-status-text">
+          <span id="calib-status">Ready to calibrate</span>
+          <span>Deadzone: <span id="val-deadzone">0.060</span> m/s²</span>
+        </div>
+      </div>
+
+      <!-- Primary Control Buttons -->
+      <div class="controls-primary" style="margin-top: 10px;">
+        <button id="btn-start" class="btn btn-primary">
+          <span>▶ Start Tracking</span>
+        </button>
+        <button id="btn-stop" class="btn btn-danger hidden">
+          <span>⏹ Stop</span>
+        </button>
+        <button id="btn-calibrate" class="btn btn-secondary">
+          <span>🎯 Calibrate (Rest)</span>
+        </button>
+      </div>
+
+      <div class="controls-secondary" style="margin-top: 10px;">
+        <button id="btn-reset" class="btn btn-secondary">
+          <span>🔄 Center Cursor</span>
+        </button>
+      </div>
+
+      <!-- Live Telemetry Diagnostic Card -->
+      <div class="card" style="margin-top: 10px;">
+        <div class="card-title">
+          <span>Live Kinematics Telemetry</span>
+          <span id="val-hz" class="badge">0 Hz</span>
+        </div>
+        <div class="telemetry-grid">
+          <div class="telemetry-item">
+            <span class="telemetry-label">Linear Accel (m/s²)</span>
+            <span id="val-linear-accel" class="telemetry-value">X: 0.00 | Y: 0.00</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Raw Accel (m/s²)</span>
+            <span id="val-raw-accel" class="telemetry-value">X: 0.00 | Y: 0.00</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Velocity (m/s)</span>
+            <span id="val-velocity" class="telemetry-value">Vx: 0.00 | Vy: 0.00</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Gyro Z (Wrist Arc)</span>
+            <span id="val-gyro" class="telemetry-value">0.00 rad/s</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Cursor Coordinates</span>
+            <span id="val-cursor" class="telemetry-value">X: 0.0 | Y: 0.0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls & Fine Tuning -->
+      <div class="card settings-group" style="margin-top: 10px;">
+        <div class="card-title">Tuning Controls</div>
+
+        <div class="setting-row">
+          <div class="setting-header">
+            <span>Desk Sensitivity</span>
+            <span id="val-sensitivity">1.4x</span>
+          </div>
+          <input id="slider-sensitivity" class="slider" type="range" min="0.5" max="3.5" step="0.1" value="1.4">
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-header">
+            <span>ZUPT Threshold (Stop Sensitivity)</span>
+            <span id="val-zupt">0.008</span>
+          </div>
+          <input id="slider-zupt" class="slider" type="range" min="0.002" max="0.025" step="0.001" value="0.008">
+        </div>
+
+        <div class="toggles-row">
+          <label class="toggle-label">
+            <input id="toggle-trails" type="checkbox" checked>
+            <span>Motion Trails</span>
+          </label>
+          <label class="toggle-label">
+            <input id="toggle-ratio" type="checkbox">
+            <span>Fill Viewport</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         TAB 2: DIRECTIONAL TESTING & ANALYTICS VIEW
+         ============================================================ -->
+    <div id="view-testing" class="view-section hidden">
+      <!-- 4 Directional Test Buttons -->
+      <div class="direction-grid">
+        <!-- UP Test Card -->
+        <div id="card-test-UP" class="test-card">
+          <div class="test-card-header">
+            <span class="test-card-title">⬆️ Test UP</span>
+            <span id="status-UP" class="test-status-pill">Ready</span>
+          </div>
+          <div class="test-card-desc">Slide phone forward across desk</div>
+          <div id="stats-UP" class="test-card-stats">--</div>
+          <button id="btn-run-UP" class="btn-test"><span>Start UP Test</span></button>
+        </div>
+
+        <!-- DOWN Test Card -->
+        <div id="card-test-DOWN" class="test-card">
+          <div class="test-card-header">
+            <span class="test-card-title">⬇️ Test DOWN</span>
+            <span id="status-DOWN" class="test-status-pill">Ready</span>
+          </div>
+          <div class="test-card-desc">Pull phone backward across desk</div>
+          <div id="stats-DOWN" class="test-card-stats">--</div>
+          <button id="btn-run-DOWN" class="btn-test"><span>Start DOWN Test</span></button>
+        </div>
+
+        <!-- LEFT Test Card -->
+        <div id="card-test-LEFT" class="test-card">
+          <div class="test-card-header">
+            <span class="test-card-title">⬅️ Test LEFT</span>
+            <span id="status-LEFT" class="test-status-pill">Ready</span>
+          </div>
+          <div class="test-card-desc">Slide phone to the left</div>
+          <div id="stats-LEFT" class="test-card-stats">--</div>
+          <button id="btn-run-LEFT" class="btn-test"><span>Start LEFT Test</span></button>
+        </div>
+
+        <!-- RIGHT Test Card -->
+        <div id="card-test-RIGHT" class="test-card">
+          <div class="test-card-header">
+            <span class="test-card-title">➡️ Test RIGHT</span>
+            <span id="status-RIGHT" class="test-status-pill">Ready</span>
+          </div>
+          <div class="test-card-desc">Slide phone to the right</div>
+          <div id="stats-RIGHT" class="test-card-stats">--</div>
+          <button id="btn-run-RIGHT" class="btn-test"><span>Start RIGHT Test</span></button>
+        </div>
+      </div>
+
+      <!-- Visual Debugger & Replay Studio -->
+      <div class="card replay-container">
+        <div class="card-title">
+          <span>Visual Replay & Trajectory Debugger</span>
+          <span id="replay-selected-badge" class="badge">UP</span>
+        </div>
+
+        <!-- Direction Select Pills -->
+        <div class="direction-pills">
+          <button id="pill-UP" class="dir-pill active">UP (Forward)</button>
+          <button id="pill-DOWN" class="dir-pill">DOWN (Back)</button>
+          <button id="pill-LEFT" class="dir-pill">LEFT</button>
+          <button id="pill-RIGHT" class="dir-pill">RIGHT</button>
+        </div>
+
+        <!-- 2D Trajectory Replay Canvas -->
+        <div class="trajectory-canvas-wrap">
+          <canvas id="trajectory-canvas"></canvas>
+        </div>
+
+        <!-- Replay Playback & Scrub Bar -->
+        <div class="replay-controls">
+          <button id="btn-replay-play" class="btn-icon">▶</button>
+          <input id="replay-scrubber" class="replay-scrubber" type="range" min="0" max="3000" step="10" value="3000">
+          <span id="replay-time-txt" class="replay-time-display">3.0s</span>
+          <select id="select-replay-speed" class="speed-select">
+            <option value="1.0">1.0x</option>
+            <option value="0.5">0.5x</option>
+            <option value="0.25">0.25x</option>
+          </select>
+        </div>
+
+        <!-- Synchronized Sensor Charts -->
+        <div class="charts-grid">
+          <div class="chart-card">
+            <span class="chart-label">Acceleration: Filtered Ax/Ay vs Raw (m/s²)</span>
+            <div class="chart-canvas-wrap">
+              <canvas id="chart-accel" class="chart-canvas"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <span class="chart-label">Estimated Velocity: Vx / Vy (m/s) & Recoil</span>
+            <div class="chart-canvas-wrap">
+              <canvas id="chart-velocity" class="chart-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Test Metrics Table -->
+      <div class="card" style="margin-top: 10px;">
+        <div class="card-title">
+          <span>Test Metrics & Accuracy</span>
+          <span id="metrics-dir-badge" class="badge">UP</span>
+        </div>
+        <div class="telemetry-grid">
+          <div class="telemetry-item">
+            <span class="telemetry-label">Directional Alignment</span>
+            <span id="metric-alignment" class="telemetry-value">--</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Angle Error (Deg)</span>
+            <span id="metric-angle-error" class="telemetry-value">--</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Net Displacement</span>
+            <span id="metric-disp" class="telemetry-value">--</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Orthogonal Drift</span>
+            <span id="metric-drift" class="telemetry-value">--</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Recoil / Bounce Vel</span>
+            <span id="metric-recoil" class="telemetry-value">--</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">ZUPT Stop Latency</span>
+            <span id="metric-zupt-lat" class="telemetry-value">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Root Cause Diagnostics & Recommendations -->
+      <div class="card" style="margin-top: 10px;">
+        <div class="card-title">Root Cause Diagnostics & Findings</div>
+        <div id="findings-container" class="findings-list">
+          <div class="finding-item">Complete all 4 directional tests to generate comprehensive root-cause diagnostics.</div>
+        </div>
+
+        <div class="card-title" style="margin-top: 12px;">Evidence-Based Recommendations</div>
+        <div id="recommendations-container" class="recommendations-list">
+          <div class="rec-item">Run tests to see algorithm tuning advice.</div>
+        </div>
+      </div>
+
+      <!-- Export & Storage Actions -->
+      <div class="card" style="margin-top: 10px;">
+        <div class="card-title">Export Dataset & Recordings</div>
+        <div class="export-row">
+          <button id="btn-export-json" class="btn btn-secondary">
+            <span>📥 Export JSON</span>
+          </button>
+          <button id="btn-export-csv" class="btn btn-secondary">
+            <span>📥 Export CSV</span>
+          </button>
+        </div>
+        <button id="btn-clear-recordings" class="btn btn-danger" style="width: 100%; margin-top: 8px;">
+          <span>🗑️ Clear All Recordings</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Countdown & Recording Modal Overlay -->
+  <div id="countdown-modal" class="countdown-overlay hidden">
+    <div id="modal-direction-title" class="countdown-direction">PREPARE TO SLIDE UP</div>
+    <div id="modal-countdown-num" class="countdown-number">3</div>
+    <div id="modal-hint" class="countdown-hint">Place phone flat on mousepad. Grip lightly.</div>
+    <div class="countdown-bar-container">
+      <div id="modal-progress-bar" class="countdown-bar-fill"></div>
+    </div>
+    <button id="btn-cancel-modal" class="btn-cancel-test">Cancel</button>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AirPointer Advanced Sensor Analytics Studio</title>
+  <link rel="stylesheet" href="css/analytics.css">
+  <meta name="theme-color" content="#0A0E17">
+</head>
+<body>
+  <div class="studio-container">
+    <!-- Header -->
+    <header class="studio-header">
+      <div class="header-brand">
+        <span style="font-size: 26px;">📊</span>
+        <div>
+          <h1>Advanced Sensor Analytics Studio</h1>
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            Desk Mouse Kinematics Debugger, Root-Cause Diagnostics & What-If Sandbox
+          </p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <input type="file" id="json-file-input" accept=".json,application/json" class="hidden">
+        <button id="btn-import-json" class="btn btn-primary">
+          <span>📂 Import JSON</span>
+        </button>
+        <button id="btn-load-storage" class="btn">
+          <span>📥 Load from Tester</span>
+        </button>
+        <button id="btn-export-report" class="btn btn-success">
+          <span>📄 Export Report</span>
+        </button>
+        <a href="index.html" class="btn">
+          <span>🖱️ Live Tester</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- File Drag-and-Drop Zone -->
+    <div id="dropzone" class="dropzone-card">
+      <div class="dropzone-text">
+        <strong>Drop test recording JSON here</strong> or click <strong>Import JSON</strong> above
+      </div>
+      <div class="dropzone-subtext">
+        Supports multi-test export bundles, single test recordings, or browser-stored datasets
+      </div>
+    </div>
+
+    <!-- Direction Navigation Tabs -->
+    <nav class="direction-tabs">
+      <button id="tab-UP" class="dir-tab-btn active" data-dir="UP">
+        <span class="tab-status-dot" id="dot-UP"></span>
+        <span>⬆️ UP (Forward)</span>
+      </button>
+      <button id="tab-DOWN" class="dir-tab-btn" data-dir="DOWN">
+        <span class="tab-status-dot" id="dot-DOWN"></span>
+        <span>⬇️ DOWN (Backward)</span>
+      </button>
+      <button id="tab-LEFT" class="dir-tab-btn" data-dir="LEFT">
+        <span class="tab-status-dot" id="dot-LEFT"></span>
+        <span>⬅️ LEFT</span>
+      </button>
+      <button id="tab-RIGHT" class="dir-tab-btn" data-dir="RIGHT">
+        <span class="tab-status-dot" id="dot-RIGHT"></span>
+        <span>➡️ RIGHT</span>
+      </button>
+      <button id="tab-COMPARISON" class="dir-tab-btn" data-dir="COMPARISON">
+        <span>⚖️ Directional Pair Comparison</span>
+      </button>
+    </nav>
+
+    <!-- Studio Grid (Main Body) -->
+    <div id="main-studio-view" class="studio-grid">
+      <!-- ========================================================
+           LEFT COLUMN: VISUALIZATIONS & TIMELINES
+           ======================================================== -->
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <!-- 2D Trajectory Canvas -->
+        <div class="card">
+          <div class="card-title">
+            <span>2D Trajectory Replay</span>
+            <span id="active-test-badge" class="badge">UP</span>
+          </div>
+
+          <div class="trajectory-canvas-wrap">
+            <canvas id="adv-trajectory-canvas"></canvas>
+          </div>
+
+          <!-- Replay Controls -->
+          <div class="replay-controls">
+            <button id="btn-adv-play" class="btn-icon">▶</button>
+            <input id="adv-scrubber" class="replay-scrubber" type="range" min="0" max="3000" step="10" value="3000">
+            <span id="adv-time-txt" class="replay-time-display">3.0s</span>
+            <select id="adv-speed-select" class="speed-select" style="background:#0F172A; color:#CBD5E1; border:1px solid #334155; border-radius:4px; padding:2px 4px;">
+              <option value="1.0">1.0x</option>
+              <option value="0.5">0.5x</option>
+              <option value="0.25">0.25x</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 4-Track Synchronized Sensor Charts -->
+        <div class="card">
+          <div class="card-title">
+            <span>Synchronized Sensor Time-Series Charts</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Hover across any graph to inspect values</span>
+          </div>
+
+          <div class="charts-container">
+            <!-- Track 1: Acceleration (Raw vs Filtered) -->
+            <div class="track-item">
+              <div class="track-header">
+                <span>1. Acceleration: Filtered vs Raw (m/s²)</span>
+                <span id="hover-accel-val" style="color: var(--cyan-accent); font-family: monospace;">--</span>
+              </div>
+              <div class="track-canvas-wrap">
+                <canvas id="track-accel" class="track-canvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Track 2: Gyroscope Z -->
+            <div class="track-item">
+              <div class="track-header">
+                <span>2. Gyroscope Z: Wrist Pivot (rad/s or deg/s)</span>
+                <span id="hover-gyro-val" style="color: var(--purple-accent); font-family: monospace;">--</span>
+              </div>
+              <div class="track-canvas-wrap">
+                <canvas id="track-gyro" class="track-canvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Track 3: Estimated Velocity -->
+            <div class="track-item">
+              <div class="track-header">
+                <span>3. Estimated Velocity: Vx / Vy (m/s)</span>
+                <span id="hover-vel-val" style="color: var(--cyan-accent); font-family: monospace;">--</span>
+              </div>
+              <div class="track-canvas-wrap">
+                <canvas id="track-velocity" class="track-canvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Track 4: Cursor Movement -->
+            <div class="track-item">
+              <div class="track-header">
+                <span>4. Cursor Displacement: dX / dY (px)</span>
+                <span id="hover-cursor-val" style="color: var(--green-success); font-family: monospace;">--</span>
+              </div>
+              <div class="track-canvas-wrap">
+                <canvas id="track-cursor" class="track-canvas"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================
+           RIGHT COLUMN: METRICS, DIAGNOSTICS & EXPERIMENTATION SANDBOX
+           ======================================================== -->
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <!-- Metrics Summary -->
+        <div class="card">
+          <div class="card-title">
+            <span>Kinematic Metrics</span>
+            <span id="metric-hz-badge" class="badge">-- Hz</span>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-box">
+              <span class="metric-label">Direction Cosine</span>
+              <span id="m-cosine" class="metric-val">--</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">Angle Error</span>
+              <span id="m-angle" class="metric-val">--</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">Displacement</span>
+              <span id="m-disp" class="metric-val">--</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">Orthogonal Drift</span>
+              <span id="m-drift" class="metric-val">--</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">Braking Recoil</span>
+              <span id="m-recoil" class="metric-val">--</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">ZUPT Stop Latency</span>
+              <span id="m-zupt-lat" class="metric-val">--</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">Resting Tilt Leakage</span>
+              <span id="m-tilt" class="metric-val">--</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">Sampling Jitter (dt)</span>
+              <span id="m-jitter" class="metric-val">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Algorithm Experimentation Sandbox (What-If Reprocessor) -->
+        <div class="card">
+          <div class="card-title">
+            <span>Algorithm Experimentation Sandbox</span>
+            <span class="badge" style="background: rgba(0, 230, 118, 0.2); color: var(--green-success);">What-If Engine</span>
+          </div>
+          <p style="font-size: 11px; color: var(--text-muted);">
+            Tune parameters and reprocess the recorded raw sensor data to test improvements without physical re-testing.
+          </p>
+
+          <div class="sandbox-controls">
+            <div class="sandbox-slider-row">
+              <div class="sandbox-label">
+                <span>Deadzone Threshold: <strong id="val-exp-deadzone">0.060</strong> m/s²</span>
+              </div>
+              <input id="slider-exp-deadzone" class="sandbox-slider" type="range" min="0.02" max="0.18" step="0.005" value="0.06">
+            </div>
+
+            <div class="sandbox-slider-row">
+              <div class="sandbox-label">
+                <span>Damping Half-Life: <strong id="val-exp-damping">0.065</strong> s</span>
+              </div>
+              <input id="slider-exp-damping" class="sandbox-slider" type="range" min="0.020" max="0.160" step="0.005" value="0.065">
+            </div>
+
+            <div class="sandbox-slider-row">
+              <div class="sandbox-label">
+                <span>Sensitivity Multiplier: <strong id="val-exp-sens">1.4x</strong></span>
+              </div>
+              <input id="slider-exp-sens" class="sandbox-slider" type="range" min="0.5" max="3.5" step="0.1" value="1.4">
+            </div>
+
+            <div class="sandbox-slider-row">
+              <div class="sandbox-label">
+                <span>ZUPT Variance Threshold: <strong id="val-exp-zupt-var">0.008</strong></span>
+              </div>
+              <input id="slider-exp-zupt-var" class="sandbox-slider" type="range" min="0.002" max="0.030" step="0.001" value="0.008">
+            </div>
+
+            <div class="sandbox-slider-row">
+              <div class="sandbox-label">
+                <span>ZUPT Min Stationary Duration: <strong id="val-exp-zupt-dur">60</strong> ms</span>
+              </div>
+              <input id="slider-exp-zupt-dur" class="sandbox-slider" type="range" min="20" max="150" step="10" value="60">
+            </div>
+
+            <button id="btn-run-experiment" class="btn btn-primary" style="margin-top: 4px;">
+              <span>⚡ Reprocess with Experimental Parameters</span>
+            </button>
+          </div>
+
+          <!-- Comparison Badges -->
+          <div id="experiment-comparison-row" class="comparison-badge-row hidden">
+            <span id="badge-delta-disp" class="delta-badge delta-neutral">Displacement: 0%</span>
+            <span id="badge-delta-recoil" class="delta-badge delta-neutral">Recoil: 0%</span>
+            <span id="badge-delta-angle" class="delta-badge delta-neutral">Angle: 0°</span>
+          </div>
+        </div>
+
+        <!-- Ranked Root-Cause Diagnostics -->
+        <div class="card">
+          <div class="card-title">
+            <span>Ranked Root-Cause Diagnostics</span>
+            <span id="issues-count-badge" class="badge">0 Issues</span>
+          </div>
+          <div id="adv-issues-container" class="issues-list">
+            <div style="font-size: 12px; color: var(--text-muted); padding: 12px; text-align: center;">
+              Load or import a test recording to generate automated root-cause diagnostics.
+            </div>
+          </div>
+        </div>
+
+        <!-- 6-Stage Pipeline Breakdown -->
+        <div class="card">
+          <div class="card-title">
+            <span>6-Stage Kinematics Pipeline Breakdown</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Transformation inspector</span>
+          </div>
+          <div class="pipeline-table-wrap">
+            <table class="pipeline-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>1. Raw Accel</th>
+                  <th>2. Unbiased</th>
+                  <th>3. Deadzone Eff</th>
+                  <th>4. Integrated Vel</th>
+                  <th>5. ZUPT</th>
+                  <th>6. Cursor dX,dY</th>
+                </tr>
+              </thead>
+              <tbody id="pipeline-tbody">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No active test loaded</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================
+         PAIRWISE DIRECTIONAL COMPARISON VIEW (Hidden by default)
+         ======================================================== -->
+    <div id="comparison-studio-view" class="card hidden">
+      <div class="card-title">
+        <span>Directional Pair Asymmetry Comparison</span>
+        <span class="badge">Cross-Axis Verification</span>
+      </div>
+      <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+        Comparing opposing test pairs (UP vs DOWN, LEFT vs RIGHT) reveals whether tracking drift is caused by physical hand grip curvature or uncompensated desk tilt.
+      </p>
+
+      <div class="pair-card-grid">
+        <!-- UP vs DOWN Card -->
+        <div class="card" style="background: var(--surface-elevated);">
+          <div class="card-title">Vertical Axis: UP vs DOWN (Forward / Backward)</div>
+          <div id="pair-results-up-down" style="font-size: 12px; line-height: 1.5; color: var(--text-secondary);">
+            Both UP and DOWN tests must be recorded to evaluate vertical symmetry.
+          </div>
+        </div>
+
+        <!-- LEFT vs RIGHT Card -->
+        <div class="card" style="background: var(--surface-elevated);">
+          <div class="card-title">Horizontal Axis: LEFT vs RIGHT (Lateral)</div>
+          <div id="pair-results-left-right" style="font-size: 12px; line-height: 1.5; color: var(--text-secondary);">
+            Both LEFT and RIGHT tests must be recorded to evaluate horizontal symmetry.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/analytics-app.js"></script>
+</body>
+</html>
